@@ -1,44 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MovieCard from "../components/MovieCard";
 import { useNavigate } from "react-router-dom";
-import dummyMovies from "../components/dummyMovies";
 
 function Movies() {
+  const [movies, setMovies] = useState([]);
   const [search, setSearch] = useState("");
   const [genre, setGenre] = useState("");
   const [year, setYear] = useState("");
   const [rating, setRating] = useState("");
   const [watchlist, setWatchlist] = useState([]);
+  const navigate = useNavigate();
 
-  const filteredMovies = dummyMovies.filter((movie) => {
+  // Fetch movies from API
+  useEffect(() => {
+    fetch("https://moviemingleatulbackend.onrender.com/api/movies")
+      .then((res) => res.json())
+      .then((data) => {
+        // API response has { data: [...] }
+        setMovies(data.data);
+      })
+      .catch((err) => console.error(err));
+  }, []);
+
+  const filteredMovies = movies.filter((movie) => {
     return (
       movie.title.toLowerCase().includes(search.toLowerCase()) &&
-      (genre ? movie.genre === genre : true) &&
-      (year ? movie.year.toString() === year : true) &&
-      (rating ? movie.rating >= parseFloat(rating) : true)
+      (genre ? movie.genre.includes(genre) : true) &&
+      (year ? movie.releaseYear.toString() === year : true) &&
+      (rating ? movie.averageRating >= parseFloat(rating) : true)
     );
   });
-  const navigate = useNavigate();
-const toggleWatchlist = (movie) => {
-  // Existing watchlist ko localStorage se load karo
-  const stored = JSON.parse(localStorage.getItem("watchlist")) || [];
 
-  const exists = stored.find((m) => m.id === movie.id);
-  let updated;
+  const addToWatchlist = async (movieId) => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("token");
 
-  if (exists) {
-    // Remove from watchlist
-    updated = stored.filter((m) => m.id !== movie.id);
-  } else {
-    // Add to watchlist
-    updated = [...stored, movie];
-  }
+    try {
+      const res = await fetch(
+        `https://moviemingleatulbackend.onrender.com/api/users/${movieId}/watchlist`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // Send token in headers
+          },
+          body: JSON.stringify({ movieId }), // Send the clicked movie ID
+        }
+      );
 
-  // State aur localStorage dono update karo
-  setWatchlist(updated);
-  localStorage.setItem("watchlist", JSON.stringify(updated));
-};
+      if (!res.ok) throw new Error("Failed to add to watchlist");
 
+      const movie = movies.find((m) => m._id === movieId);
+      setWatchlist((prev) => [...prev, movie]);
+      alert("✅ Movie added to watchlist!");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to add movie to watchlist");
+    }
+  };
 
   return (
     <div
@@ -129,13 +148,11 @@ const toggleWatchlist = (movie) => {
           }}
         >
           <option value="">All Years</option>
-          <option value="1999">1999</option>
-          <option value="2008">2008</option>
-          <option value="2009">2009</option>
-          <option value="2010">2010</option>
-          <option value="2014">2014</option>
-          <option value="2016">2016</option>
-          <option value="2019">2019</option>
+          {[1999, 2008, 2009, 2010, 2014, 2016, 2019].map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
         </select>
 
         <select
@@ -160,20 +177,21 @@ const toggleWatchlist = (movie) => {
       </div>
 
       {/* Movies Grid */}
-
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
           gap: "2rem",
           justifyContent: "center",
+          maxWidth: "auto",
+          margin: "0 auto",
         }}
       >
         {filteredMovies.length > 0 ? (
           filteredMovies.map((movie) => (
-            <div key={movie.id}>
+            <div key={movie._id}>
               <div
-                onClick={() => navigate(`/movie/${movie.id}`)}
+                onClick={() => navigate(`/movie/${movie._id}`)}
                 style={{ cursor: "pointer" }}
               >
                 <MovieCard movie={movie} />
@@ -181,14 +199,14 @@ const toggleWatchlist = (movie) => {
 
               {/* Watchlist Button */}
               <button
-                onClick={() => toggleWatchlist(movie)}
+                onClick={() => addToWatchlist(movie._id)}
                 style={{
                   marginTop: "0.5rem",
                   width: "100%",
                   padding: "0.5rem 0",
                   borderRadius: "6px",
                   border: "none",
-                  background: watchlist.find((m) => m.id === movie.id)
+                  background: watchlist.find((m) => m._id === movie._id)
                     ? "#f87171"
                     : "#10b981",
                   color: "#fff",
@@ -196,7 +214,7 @@ const toggleWatchlist = (movie) => {
                   cursor: "pointer",
                 }}
               >
-                {watchlist.find((m) => m.id === movie.id)
+                {watchlist.find((m) => m._id === movie._id)
                   ? "Remove from Watchlist"
                   : "Add to Watchlist"}
               </button>

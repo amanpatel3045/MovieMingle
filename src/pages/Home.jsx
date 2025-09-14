@@ -1,21 +1,42 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import MovieCard from "../components/MovieCard";
-
-const featuredMovies = [
-  { id: 1, title: "Inception", year: 2010, rating: 4.8, genre: "Sci-Fi", poster: "https://m.media-amazon.com/images/I/51v5ZpFyaFL._AC_.jpg" },
-  { id: 2, title: "Interstellar", year: 2014, rating: 4.6, genre: "Sci-Fi", poster: "https://m.media-amazon.com/images/I/71niXI3lxlL._AC_SY679_.jpg" },
-  { id: 3, title: "The Matrix", year: 1999, rating: 4.7, genre: "Sci-Fi", poster: "https://m.media-amazon.com/images/I/51EG732BV3L.jpg" },
-  { id: 4, title: "Avatar", year: 2009, rating: 4.5, genre: "Action", poster: "https://m.media-amazon.com/images/I/41kTVLeW1CL._AC_.jpg" },
-];
-
-const trendingMovies = [
-  { id: 1, title: "Inception", year: 2010, rating: 4.8, genre: "Sci-Fi", poster: "https://m.media-amazon.com/images/I/51v5ZpFyaFL._AC_.jpg" },
-  { id: 2, title: "Interstellar", year: 2014, rating: 4.6, genre: "Sci-Fi", poster: "https://m.media-amazon.com/images/I/71niXI3lxlL._AC_SY679_.jpg" },
-  { id: 3, title: "The Matrix", year: 1999, rating: 4.7, genre: "Sci-Fi", poster: "https://m.media-amazon.com/images/I/51EG732BV3L.jpg" },
-  { id: 4, title: "Avatar", year: 2009, rating: 4.5, genre: "Action", poster: "https://m.media-amazon.com/images/I/41kTVLeW1CL._AC_.jpg" },
-];
+import axios from "axios";
 
 function Home() {
+  const [movies, setMovies] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch movies from backend API
+    const fetchMovies = async () => {
+      try {
+        const res = await axios.get(
+          "https://moviemingleatulbackend.onrender.com/api/movies"
+        );
+        setMovies(res.data.data); // API response has { data: [...] }
+      } catch (err) {
+        console.error("Error fetching movies:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMovies();
+  }, []);
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: "2rem",
+          color: "#f8fafc",
+          textAlign: "center",
+        }}
+      >
+        Loading movies...
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -69,8 +90,8 @@ function Home() {
             gap: "2rem",
           }}
         >
-          {featuredMovies.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
+          {movies.map((movie) => (
+            <MovieCard key={movie._id} movie={movie} />
           ))}
         </div>
       </section>
@@ -94,8 +115,8 @@ function Home() {
             gap: "2rem",
           }}
         >
-          {trendingMovies.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
+          {movies.map((movie) => (
+            <MovieCard key={movie._id} movie={movie} />
           ))}
         </div>
       </section>

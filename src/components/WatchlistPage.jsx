@@ -3,25 +3,44 @@ import MovieCard from "../components/MovieCard";
 
 function WatchlistPage() {
   const [watchlist, setWatchlist] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // LocalStorage se watchlist load karna
-useEffect(() => {
-  const updateWatchlist = () => {
-    const stored = JSON.parse(localStorage.getItem("watchlist")) || [];
-    setWatchlist(stored);
-  };
+  useEffect(() => {
+    const fetchWatchlist = async () => {
+      const user = JSON.parse(localStorage.getItem("user"));
+      const token = localStorage.getItem("token");
 
-  // Page mount pe load
-  updateWatchlist();
+      if (!user || !token) {
+        setWatchlist([]);
+        setLoading(false);
+        return;
+      }
 
-  // Listen for localStorage changes (from other tabs/components)
-  window.addEventListener("storage", updateWatchlist);
+      try {
+        const res = await fetch(
+          `https://moviemingleatulbackend.onrender.com/api/users/${user.id}/watchlist`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-  return () => {
-    window.removeEventListener("storage", updateWatchlist);
-  };
-}, []);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Failed to fetch watchlist");
 
+        setWatchlist(data); // Assuming API returns an array of movies
+      } catch (err) {
+        console.error(err);
+        setWatchlist([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWatchlist();
+  }, []);
 
   return (
     <div
@@ -46,7 +65,11 @@ useEffect(() => {
         ⭐ My Watchlist
       </h2>
 
-      {watchlist.length === 0 ? (
+      {loading ? (
+        <p style={{ textAlign: "center", fontSize: "1.2rem", color: "#94a3b8" }}>
+          Loading...
+        </p>
+      ) : watchlist.length === 0 ? (
         <p style={{ textAlign: "center", fontSize: "1.2rem", color: "#94a3b8" }}>
           Your watchlist is empty. Add some movies!
         </p>
@@ -59,7 +82,7 @@ useEffect(() => {
           }}
         >
           {watchlist.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
+            <MovieCard key={movie._id} movie={movie} />
           ))}
         </div>
       )}
